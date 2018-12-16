@@ -1,6 +1,6 @@
 
 ## How to set up:
-This is developed with docker and vessel shipping container: https://vessel.shippingdocker.com/
+This is developed with Docker and Vessel shipping container: https://vessel.shippingdocker.com/
 I made simple bash script to set up this application easily.
 - git clone
 - cd into cloned folder.
