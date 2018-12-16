@@ -16,6 +16,11 @@ APP_ROOT="$(cd ${PROJECT_ROOT}/ && pwd)"
 APP_PORT=${1}
 MYSQL_PORT=${2}
 
+# copy .env file if not exists
+if [ ! -f "${APP_ROOT}/.env" ]; then
+  cp "${APP_ROOT}/.env.example" "${APP_ROOT}/.env"
+fi
+
 function docker_prep {
     # export current user id
     USER_ID=$(id -u -r)
@@ -26,29 +31,7 @@ function docker_prep {
       -w /opt/ shippingdocker/php-composer:latest \
       composer require shipping-docker/vessel
 
-    docker run -u $USER_ID --rm -it \
-      -v $(pwd):/opt \
-      -w /opt/ shippingdocker/php-composer:latest \
-      composer require shipping-docker/vessel
-
     bash vessel init
-
-    if [ "$#" -eq  "0" ]; then
-        echo "Using default ports 80 and 3060"
-    else
-        if [ "$APP_PORT" ]; then
-          echo "Appying app port $APP_PORT."
-          echo "APP_PORT=$APP_PORT" >> ./.env
-        fi
-
-        if [ "$MYSQL_PORT" ]; then
-          echo "Appying mysql port $MYSQL_PORT."
-          echo "MYSQL_PORT=$MYSQL_PORT" >> ./.env
-        fi
-    fi
-
-    ./vessel start
-    ./vessel exec app php artisan key:generate
 }
 
 docker_prep
@@ -71,6 +54,25 @@ service_container_exists() {
     echo "$(cd ${PROJECT_ROOT} && docker-compose -f ${COMPOSE_FILE} ps ${SERVICE} 2> /dev/null | grep _${SERVICE}_ | awk '{ print $1 }')"
 }
 
+# check which port to use
+if [ "$#" -eq  "0" ]; then
+    echo "Using default ports 80 and 3060"
+else
+    if [ "$APP_PORT" ]; then
+      echo "Appying app port $APP_PORT."
+      echo "APP_PORT=$APP_PORT" >> ./.env
+    fi
+
+    if [ "$MYSQL_PORT" ]; then
+      echo "Appying mysql port $MYSQL_PORT."
+      echo "MYSQL_PORT=$MYSQL_PORT" >> ./.env
+    fi
+fi
+
+# start vessel.
+./vessel start
+
+# Check if container exist.
 APP_CONTAINER=$(service_container_exists app)
 
 if [ -z "${APP_CONTAINER}" ]; then
@@ -79,6 +81,8 @@ if [ -z "${APP_CONTAINER}" ]; then
 fi
 
 
+./vessel exec app php artisan key:generate
+
 # Start vessel actions to deliver application easier.
 ./vessel exec app composer install --no-interaction --prefer-dist --optimize-autoloader
 ./vessel exec app php artisan migrate
@@ -86,7 +90,7 @@ fi
 
 # install node modules and build assets.
 ./vessel npm install
-./vessel npm run development
+./vessel npm run production
 
 echo "Running tests"
 ./vessel exec app ./vendor/bin/phpunit
