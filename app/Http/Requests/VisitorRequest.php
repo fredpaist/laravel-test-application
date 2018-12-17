@@ -34,9 +34,12 @@ class VisitorRequest extends FormRequest
 
     public function processRequest()
     {
+        $visitor = null;
         if ($data_id = $this->session()->get('saved_id')){
             $visitor = Visitor::find($data_id);
-        } else {
+        }
+
+        if (!$visitor) {
             $visitor = new Visitor();
         }
 
